@@ -3,21 +3,16 @@ import json
 import os
 import sys
 from datetime import datetime
-from dotenv import load_dotenv
 
-# Load environment variables from root directory
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-if not os.path.exists(env_path):
-    st.error("""
-    No .env file found in the root directory. Please create one with your API key:
-    
-    1. Create a file named '.env' in the root directory
-    2. Add the following line to it:
-       CLAUDE_API_KEY=your_api_key_here
-    """)
-    st.stop()
-
-load_dotenv(env_path)
+# Try to import dotenv, but don't fail if it's not available
+try:
+    from dotenv import load_dotenv
+    # Load environment variables from root directory
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+except ImportError:
+    pass  # Running on Streamlit Cloud, will use st.secrets instead
 
 # Add the backend directory to the Python path
 backend_path = os.path.join(os.path.dirname(__file__), 'backend')
@@ -28,15 +23,23 @@ from anthropic import Anthropic
 
 # Initialize the Claude client
 if 'claude_client' not in st.session_state:
-    api_key = os.getenv('CLAUDE_API_KEY')
+    # Try to get API key from environment first, then from streamlit secrets
+    api_key = os.getenv('CLAUDE_API_KEY') or st.secrets.get("CLAUDE_API_KEY")
+    
     if not api_key:
         st.error("""
-        CLAUDE_API_KEY not found in environment variables. 
+        CLAUDE_API_KEY not found. 
         
-        Please make sure your .env file contains:
-        CLAUDE_API_KEY=your_api_key_here
+        If running locally:
+        1. Create a .env file in the root directory
+        2. Add the line: CLAUDE_API_KEY=your_api_key_here
+        
+        If running on Streamlit Cloud:
+        1. Go to your app settings
+        2. Add CLAUDE_API_KEY to your app secrets
         """)
         st.stop()
+    
     st.session_state.claude_client = Anthropic(api_key=api_key)
 
 # Initialize the PromptHandler
