@@ -44,4 +44,7 @@ yarn-error.log*
 *.swp
 *.swo
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Streamlit secrets
+.streamlit/secrets.toml 

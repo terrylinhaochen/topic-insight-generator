@@ -20,27 +20,45 @@ sys.path.append(backend_path)
 
 from utils.prompt_handler import PromptHandler
 from anthropic import Anthropic
+import httpx
 
 # Initialize the Claude client
 if 'claude_client' not in st.session_state:
-    # Try to get API key from environment first, then from streamlit secrets
-    api_key = os.getenv('CLAUDE_API_KEY') or st.secrets.get("CLAUDE_API_KEY")
-    
-    if not api_key:
-        st.error("""
-        CLAUDE_API_KEY not found. 
+    try:
+        # Try to get API key from environment first, then from streamlit secrets
+        api_key = os.getenv('CLAUDE_API_KEY') or st.secrets.get("CLAUDE_API_KEY")
         
-        If running locally:
-        1. Create a .env file in the root directory
-        2. Add the line: CLAUDE_API_KEY=your_api_key_here
+        if not api_key:
+            st.error("""
+            CLAUDE_API_KEY not found. 
+            
+            If running locally:
+            1. Create a .env file in the root directory
+            2. Add the line: CLAUDE_API_KEY=your_api_key_here
+            
+            If running on Streamlit Cloud:
+            1. Go to your app settings
+            2. Add to .streamlit/secrets.toml:
+               CLAUDE_API_KEY = "your_api_key_here"
+            """)
+            st.stop()
         
-        If running on Streamlit Cloud:
-        1. Go to your app settings
-        2. Add CLAUDE_API_KEY to your app secrets
-        """)
+        # Initialize with timeout settings
+        timeout = httpx.Timeout(30.0, connect=10.0)
+        http_client = httpx.Client(timeout=timeout)
+        st.session_state.claude_client = Anthropic(
+            api_key=api_key,
+            http_client=http_client
+        )
+    except Exception as e:
+        st.error(f"Failed to initialize Claude client: {str(e)}")
         st.stop()
-    
-    st.session_state.claude_client = Anthropic(api_key=api_key)
+
+# Get Mastodon configuration
+mastodon_config = {
+    'access_token': os.getenv('MASTODON_ACCESS_TOKEN') or st.secrets.get("mastodon", {}).get("access_token"),
+    'instance': os.getenv('MASTODON_INSTANCE') or st.secrets.get("mastodon", {}).get("instance")
+}
 
 # Initialize the PromptHandler
 prompt_handler = PromptHandler()
