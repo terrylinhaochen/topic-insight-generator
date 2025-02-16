@@ -1,8 +1,43 @@
 import streamlit as st
 import json
 import os
+import sys
 from datetime import datetime
-from backend.utils.prompt_handler import PromptHandler
+from dotenv import load_dotenv
+
+# Load environment variables from root directory
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+if not os.path.exists(env_path):
+    st.error("""
+    No .env file found in the root directory. Please create one with your API key:
+    
+    1. Create a file named '.env' in the root directory
+    2. Add the following line to it:
+       CLAUDE_API_KEY=your_api_key_here
+    """)
+    st.stop()
+
+load_dotenv(env_path)
+
+# Add the backend directory to the Python path
+backend_path = os.path.join(os.path.dirname(__file__), 'backend')
+sys.path.append(backend_path)
+
+from utils.prompt_handler import PromptHandler
+from anthropic import Anthropic
+
+# Initialize the Claude client
+if 'claude_client' not in st.session_state:
+    api_key = os.getenv('CLAUDE_API_KEY')
+    if not api_key:
+        st.error("""
+        CLAUDE_API_KEY not found in environment variables. 
+        
+        Please make sure your .env file contains:
+        CLAUDE_API_KEY=your_api_key_here
+        """)
+        st.stop()
+    st.session_state.claude_client = Anthropic(api_key=api_key)
 
 # Initialize the PromptHandler
 prompt_handler = PromptHandler()
@@ -41,50 +76,52 @@ if st.button("Generate Insight", disabled=not user_input):
             # Format the prompt
             prompt_data = prompt_handler.format_prompt(domain, user_input)
             
-            # Call Claude API
-            response = st.session_state.get('claude_client').post(
-                'http://localhost:3001/api/generate',
-                json=prompt_data
+            # Format the prompt according to Claude's requirements
+            formatted_prompt = f"{prompt_data['system']}\n\nHuman: Generate a podcast episode about: {prompt_data['user']}\n\nAssistant:"
+            
+            # Call Claude API directly using the completions endpoint
+            response = st.session_state.claude_client.completions.create(
+                model="claude-2.1",
+                prompt=formatted_prompt,
+                max_tokens_to_sample=1500,
+                temperature=0.7
             )
             
-            if response.status_code != 200:
-                st.error("Failed to generate insight. Please try again.")
-            else:
-                data = response.json()
+            # Parse the response
+            try:
+                text = response.completion.strip()
+                json_match = text[text.find('{'):text.rfind('}')+1]
+                insight = json.loads(json_match)
                 
-                # Parse the response
-                try:
-                    text = data['content'][0]['text'].strip()
-                    json_match = text[text.find('{'):text.rfind('}')+1]
-                    insight = json.loads(json_match)
-                    
-                    # Display the insight
-                    st.subheader("Generated Insight")
-                    
-                    # Episode title with styling
-                    st.markdown(f"### {insight['episodeTitle']}")
-                    
-                    # Description
-                    st.markdown(f"_{insight['description']}_")
-                    
-                    # Book recommendations
-                    st.subheader("📚 Recommended Reading")
-                    
-                    # Primary book
-                    st.markdown("**Core Book:**")
-                    st.markdown(f"- {insight['books']['primary']['title']} by {insight['books']['primary']['author']}")
-                    
-                    # Supporting books
-                    st.markdown("**Supporting Books:**")
-                    for book in insight['books']['supporting']:
-                        st.markdown(f"- {book['title']} by {book['author']}")
-                    
-                except Exception as e:
-                    st.error(f"Error parsing the response: {str(e)}")
-                    st.code(text)  # Show the raw text for debugging
-                    
+                # Display the insight
+                st.subheader("Generated Insight")
+                
+                # Episode title with styling
+                st.markdown(f"### {insight['episodeTitle']}")
+                
+                # Description
+                st.markdown(f"_{insight['description']}_")
+                
+                # Book recommendations
+                st.subheader("📚 Recommended Reading")
+                
+                # Primary book
+                st.markdown("**Core Book:**")
+                st.markdown(f"- {insight['books']['primary']['title']} by {insight['books']['primary']['author']}")
+                
+                # Supporting books
+                st.markdown("**Supporting Books:**")
+                for book in insight['books']['supporting']:
+                    st.markdown(f"- {book['title']} by {book['author']}")
+                
+            except Exception as e:
+                st.error(f"Error parsing the response: {str(e)}")
+                st.code(text)  # Show the raw text for debugging
+                
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
+            st.error("Full error details:")
+            st.code(str(e))
 
 # Add some spacing
 st.markdown("---")
