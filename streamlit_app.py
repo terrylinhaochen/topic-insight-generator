@@ -217,120 +217,6 @@ user_input = st.text_area(
 # RAG mode toggle
 rag_mode = st.checkbox("Use AI to automatically find relevant chapters", value=True)
 
-# Debug mode toggle
-debug_mode = st.checkbox("Enable Debug Mode", value=False)
-
-# Manual JSON input in debug mode
-if debug_mode:
-    st.info("Debug Mode Enabled - You can test the JSON parsing directly")
-    manual_json = st.text_area(
-        "Test JSON Input (optional)",
-        placeholder='Paste a JSON response to test parsing...',
-        height=200
-    )
-    
-    if manual_json and st.button("Parse JSON"):
-        try:
-            # Try to parse the JSON
-            result = json.loads(manual_json)
-            
-            # Display the raw JSON structure
-            with st.expander("Debug: View Raw JSON Response"):
-                st.json(result)
-            
-            # Transform/fix the JSON structure if needed
-            transformed_result = result.copy()
-            
-            # Check for and fix missing fields
-            if 'episodeTitle' not in transformed_result:
-                st.warning("Missing 'episodeTitle' field - adding a default title")
-                transformed_result['episodeTitle'] = "Insights from The Art of War"
-            
-            if 'description' not in transformed_result:
-                st.warning("Missing 'description' field - adding a default description")
-                transformed_result['description'] = "Connecting modern challenges to ancient wisdom from Sun Tzu"
-            
-            # Convert 'books' to 'chapters' if needed (common issue)
-            if 'books' in transformed_result and 'chapters' not in transformed_result:
-                st.warning("Found 'books' field instead of 'chapters' - converting to proper format")
-                transformed_result['chapters'] = transformed_result['books']
-                del transformed_result['books']
-            
-            # Fix chapters structure if it's not in the expected format
-            if 'chapters' in transformed_result:
-                # If chapters is a list/array instead of an object with primary/supporting
-                if isinstance(transformed_result['chapters'], list):
-                    st.warning("The 'chapters' field is an array instead of the expected object structure - restructuring it")
-                    chapters_list = transformed_result['chapters']
-                    
-                    # Create the correct structure
-                    transformed_result['chapters'] = {
-                        'primary': {
-                            'chapter': chapters_list[0]['title'] if len(chapters_list) > 0 and 'title' in chapters_list[0] else "Chapter from The Art of War",
-                            'author': 'Sun Tzu'
-                        },
-                        'supporting': []
-                    }
-                    
-                    # Add any additional chapters as supporting
-                    if len(chapters_list) > 1:
-                        for chapter in chapters_list[1:]:
-                            transformed_result['chapters']['supporting'].append({
-                                'title': chapter.get('title', "Chapter from The Art of War"),
-                                'author': 'Sun Tzu'
-                            })
-            else:
-                st.warning("Missing 'chapters' field - adding a default structure")
-                transformed_result['chapters'] = {
-                    'primary': {
-                        'chapter': "The Art of War",
-                        'author': 'Sun Tzu'
-                    },
-                    'supporting': []
-                }
-            
-            # Display the transformed JSON structure
-            with st.expander("Debug: View Transformed JSON"):
-                st.json(transformed_result)
-            
-            # Display the podcast script
-            st.subheader("Generated Podcast Script")
-            
-            # Episode title with styling
-            st.markdown(f"### {transformed_result['episodeTitle']}")
-            
-            # Description
-            st.markdown(f"_{transformed_result['description']}_")
-            
-            # Script content
-            st.markdown("#### Script")
-            st.markdown(transformed_result['script'])
-            
-            # References section
-            st.subheader(f"References")
-            
-            # Primary reference
-            if 'primary' in transformed_result['chapters']:
-                primary = transformed_result['chapters']['primary']
-                st.markdown(f"**Primary Chapter:**")
-                
-                # Get chapter title - try both 'chapter' and 'title' fields
-                primary_title = primary.get('chapter') or primary.get('title') or "Untitled"
-                primary_author = primary.get('author', 'Sun Tzu')
-                st.markdown(f"- {primary_title} by {primary_author}")
-            
-            # Supporting references
-            if 'supporting' in transformed_result['chapters'] and transformed_result['chapters']['supporting']:
-                st.markdown(f"**Supporting Chapters:**")
-                for item in transformed_result['chapters']['supporting']:
-                    title = item.get('title') or item.get('chapter') or "Untitled"
-                    author = item.get('author', 'Sun Tzu')
-                    st.markdown(f"- {title} by {author}")
-            
-        except Exception as e:
-            st.error(f"Error parsing the JSON: {str(e)}")
-            st.code(manual_json)
-
 # Chapter selection - only show if not using RAG
 selected_chapters = []
 if not rag_mode and chapter_summaries:
@@ -375,11 +261,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
 
             # Format the prompt with selected chapters
             prompt_data = prompt_handler.format_prompt(domain, user_input)
-            
-            # Debug: Display the system prompt
-            if debug_mode:
-                with st.expander("Debug: View System Prompt Content"):
-                    st.code(prompt_data['system'])
             
             # Get quotes from selected chapters
             chapters_with_quotes = []
@@ -428,9 +309,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
             try:
                 text = response.content[0].text.strip()
                 
-                # Store the raw response for debugging
-                st.session_state.last_raw_response = text
-                
                 # First attempt: Try to find JSON in the response
                 json_pattern = re.compile(r'({.*})', re.DOTALL)
                 json_match = json_pattern.search(text)
@@ -440,25 +318,18 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                     json_text = json_match.group(1)
                     result = json.loads(json_text)
                     
-                    # Debug: Display the raw JSON structure
-                    with st.expander("Debug: View Raw JSON Response"):
-                        st.json(result)
-                    
-                    # Transform/fix the JSON structure if needed
+                    # Transform the JSON structure if needed
                     transformed_result = result.copy()
                     
                     # Check for and fix missing fields
                     if 'episodeTitle' not in transformed_result:
-                        st.warning("Missing 'episodeTitle' field - adding a default title")
                         transformed_result['episodeTitle'] = "Insights from The Art of War"
                     
                     if 'description' not in transformed_result:
-                        st.warning("Missing 'description' field - adding a default description")
                         transformed_result['description'] = "Connecting modern challenges to ancient wisdom from Sun Tzu"
                     
                     # Convert 'books' to 'chapters' if needed (common issue)
                     if 'books' in transformed_result and 'chapters' not in transformed_result:
-                        st.warning("Found 'books' field instead of 'chapters' - converting to proper format")
                         transformed_result['chapters'] = transformed_result['books']
                         del transformed_result['books']
                     
@@ -466,7 +337,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                     if 'chapters' in transformed_result:
                         # If chapters is a list/array instead of an object with primary/supporting
                         if isinstance(transformed_result['chapters'], list):
-                            st.warning("The 'chapters' field is an array instead of the expected object structure - restructuring it")
                             chapters_list = transformed_result['chapters']
                             
                             # Create the correct structure
@@ -486,7 +356,7 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                                         'author': 'Sun Tzu'
                                     })
                     else:
-                        st.warning("Missing 'chapters' field - adding a default structure")
+                        # Add default chapters structure if missing
                         transformed_result['chapters'] = {
                             'primary': {
                                 'chapter': "The Art of War",
@@ -494,10 +364,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                             },
                             'supporting': []
                         }
-                    
-                    # Display the transformed JSON structure
-                    with st.expander("Debug: View Transformed JSON"):
-                        st.json(transformed_result)
                     
                     # Continue with the transformed result
                     result = transformed_result
@@ -524,33 +390,8 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                     st.markdown("#### Script")
                     st.markdown(result['script'])
                     
-                    # Enhanced debugging for chapters structure
-                    with st.expander("Debug: Raw Chapters Data"):
-                        st.write("Raw chapters structure:")
-                        st.json(result.get('chapters', {}))
-                        
-                        st.write("Expected structure:")
-                        st.code("""{
-  "primary": {
-    "chapter": "The primary Art of War chapter used",
-    "author": "Sun Tzu"
-  },
-  "supporting": [
-    {
-      "title": "First supporting chapter name",
-      "author": "Sun Tzu"
-    }
-  ]
-}""")
-                    
                     # References section
                     st.subheader(f"References")
-                    
-                    # Validate chapters structure
-                    if not isinstance(result['chapters'], dict):
-                        st.error("The 'chapters' field is not a valid object")
-                        st.json(result['chapters'])
-                        st.stop()
                     
                     # Primary reference
                     if 'primary' in result['chapters']:
@@ -561,13 +402,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                         primary_title = primary.get('chapter') or primary.get('title') or "Untitled"
                         primary_author = primary.get('author', 'Sun Tzu')
                         st.markdown(f"- {primary_title} by {primary_author}")
-                        
-                        # Debug primary chapter structure
-                        with st.expander("Debug: Primary Chapter Structure"):
-                            st.json(primary)
-                    else:
-                        st.warning("No primary reference found")
-                        st.write("The 'primary' field is missing from the 'chapters' object.")
                     
                     # Supporting references
                     if 'supporting' in result['chapters'] and result['chapters']['supporting']:
@@ -576,16 +410,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                             title = item.get('title') or item.get('chapter') or "Untitled"
                             author = item.get('author', 'Sun Tzu')
                             st.markdown(f"- {title} by {author}")
-                        
-                        # Debug supporting chapters structure
-                        with st.expander("Debug: Supporting Chapters Structure"):
-                            st.json(result['chapters']['supporting'])
-                    else:
-                        st.warning("No supporting references found")
-                        if 'supporting' not in result['chapters']:
-                            st.write("The 'supporting' field is missing from the 'chapters' object.")
-                        elif not result['chapters']['supporting']:
-                            st.write("The 'supporting' field is empty (no items in the array).")
                 else:
                     # Handle plain text format
                     # Use our script_formatter to parse the response
@@ -602,10 +426,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
                             st.stop()
                     
                     result = parse_script_response(text)
-                    
-                    # Debug: Display the parsed response
-                    with st.expander("Debug: View Parsed Response"):
-                        st.json(result)
                     
                     # Display the podcast script
                     st.subheader("Generated Podcast Script")
@@ -650,12 +470,6 @@ if st.button("Generate Podcast Script", disabled=not user_input):
             st.error("Full error details:")
             st.code(str(e))
 
-    # Add a button to show the raw response text for debugging
-    if debug_mode:
-        if 'last_raw_response' in st.session_state:
-            with st.expander("Debug: View Raw Claude Response"):
-                st.text(st.session_state.last_raw_response)
-    
 # Add some spacing
 st.markdown("---")
 
