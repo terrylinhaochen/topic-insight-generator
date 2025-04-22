@@ -16,6 +16,19 @@ class PromptHandler:
         }
 
     def format_prompt(self, domain, user_input):
+        """
+        Format the prompt for Claude with the appropriate system prompt for the domain.
+        
+        Args:
+            domain (str): The domain to get the prompt for ('career' or 'parenting')
+            user_input (str): The user's input content
+            
+        Returns:
+            dict: A dictionary with 'system' and 'user' keys for Claude
+            
+        Raises:
+            ValueError: If the domain is invalid
+        """
         if domain not in self.prompts:
             raise ValueError(f"Invalid domain: {domain}")
             
