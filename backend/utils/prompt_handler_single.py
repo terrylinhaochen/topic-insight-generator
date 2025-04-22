@@ -5,8 +5,8 @@ import sys
 config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config')
 sys.path.append(config_path)
 
-from prompts.career_single import CAREER_SYSTEM_PROMPT
-from prompts.parenting_single import PARENTING_SYSTEM_PROMPT
+from prompts.career import CAREER_SYSTEM_PROMPT
+from prompts.parenting import PARENTING_SYSTEM_PROMPT
 
 class PromptHandler:
     def __init__(self):
