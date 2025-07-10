@@ -2,6 +2,8 @@
   "CHAPTER": {
     "NUMBER": "I",
     "TITLE": "Laying Plans",
+    "SUMMARY": "Chapter I introduces the foundational principles of Sun Tzu's military philosophy. It establishes warfare as vitally important to the state and identifies the five constant factors that determine military success: Moral Law, Heaven, Earth, Commander, and Method/discipline. The chapter emphasizes thorough preparation through calculation and analysis before battle, introduces the critical principle that 'all warfare is based on deception,' and outlines various deceptive tactics. It concludes by asserting that victory comes from comprehensive planning rather than superior force, setting the conceptual framework for the entire text.",
+    "USER_ENGAGEMENT":"To be added",
     "CONTENTS": [
       {
         "VERSE": "1",

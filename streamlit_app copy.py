@@ -65,13 +65,13 @@ prompt_handler = PromptHandler()
 
 # Page config
 st.set_page_config(
-    page_title="Podcast Script Generator",
-    page_icon="🎙️",
+    page_title="AI Insight Generator",
+    page_icon="🎯",
     layout="centered"
 )
 
 # Title and description
-st.title("Podcast Script Generator")
+st.title("AI Insight Generator")
 st.markdown("""
 Generate insightful podcast scripts for career development and parenting topics.
 Connect everyday experiences to deeper patterns and unexpected domains using "The Art of War" principles.

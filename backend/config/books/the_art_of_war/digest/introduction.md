@@ -1,5 +1,5 @@
 {
-  "LITCHARTS_GUIDE": {
+  "AIBRARY_GUIDE": {
     "TITLE": "The Art of War",
     "SECTION": "INTRODUCTION",
     "SUB_SECTIONS": [
